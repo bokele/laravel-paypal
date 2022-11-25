@@ -84,13 +84,9 @@ class PaypalHelper
      */
     public function getAccessToken(): String
     {
-
-        if (cache()->has('access_token')) {
-            return cache()->get('access_token');
-        }
-
         $response = $this->accessToken();
         if ($response->successful()) {
+            Cache::put('access_token_time', $response['expires_in'], $seconds = 30);
             return  $response['access_token'];
         }
         if ($response->failed()) {
