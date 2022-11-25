@@ -2,7 +2,9 @@
 
 namespace App\Http\Helper;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 
 class PaypalHelper
@@ -10,22 +12,22 @@ class PaypalHelper
     /**
      * @var string
      */
-    protected static $cliendId = '';
+    protected  $cliendId = '';
 
     /**
      * @var string
      */
-    protected static $secretId = '';
+    protected  $secretId = '';
 
     /**
      * @var string
      */
-    protected static $url = '';
+    protected  $url = '';
 
     /**
      * @var string
      */
-    protected static $token = '';
+    protected  $token = '';
 
     /**
      * PayPal constructor.
@@ -60,7 +62,7 @@ class PaypalHelper
      *
      * @return object
      */
-    public function refund(String $captureId, String $amount, String $currencyCode = "EUR"): object
+    public function refund(String $captureId, String $amount, String $currencyCode = "EUR")
     {
 
         $url = $this->url . "payments/captures/$captureId/refund";
@@ -82,8 +84,27 @@ class PaypalHelper
      */
     public function getAccessToken(): String
     {
+
+        if (cache()->has('access_token')) {
+            return cache()->get('access_token');
+        }
+
         $response = $this->accessToken();
-        return  $response['access_token'];
+        if ($response->successful()) {
+            return  $response['access_token'];
+        }
+        if ($response->failed()) {
+            Log::error('MOTORSPECS OAUTH2: Caught ServerException. ' . $response->body());
+            return false;
+        }
+        if ($response->clientError()) {
+            Log::error('MOTORSPECS OAUTH2: Caught ClientException. ' . $response->body());
+            return false;
+        }
+        if ($response->serverError()) {
+            Log::error('MOTORSPECS OAUTH2: Caught ServerException. ' . $response->body());
+            return false;
+        }
     }
 
     /**
@@ -91,7 +112,7 @@ class PaypalHelper
      *
      * @return array
      */
-    public function accessToken(): array
+    public function accessToken()
     {
 
         $url = "https://api-m.sandbox.paypal.com/v1/oauth2/token";
@@ -99,7 +120,9 @@ class PaypalHelper
         $response = Http::asForm()->withBasicAuth($this->cliendId, $this->secretId)->post(
             $url,
             ["grant_type" => "client_credentials"]
-        )->json();
+        );
+
+        Cache::put('access_token', $response['access_token'], $seconds = 30);
 
         return  $response;
     }

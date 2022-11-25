@@ -4,58 +4,73 @@ namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use App\Http\Helper\PaypalHelper;
+use Illuminate\Support\Facades\Http;
 
 class PaypalTest extends TestCase
 {
     public function paypal_access_toke_array()
     {
-        $expectedResponse = [
-            'scope'         => 'some_scope',
-            'access_token'  => 'some_access_token',
-            'token_type'    => 'Bearer',
-            'app_id'        => 'APP-80W284485P519543T',
-            'expires_in'    => 32400,
-            'nonce'         => 'some_nonce',
-        ];
 
         $paypal = new PaypalHelper();
         $accessToken = $paypal->accessToken();
 
-        $this->assertEquals($expectedResponse, $accessToken, true);
+        $this->assertContains('access_token', $accessToken);
     }
 
 
     public function it_can_get_access_token()
     {
-        $accessToken = 'some_access_token';
 
         $paypal = new  PaypalHelper();
         $getAccessToken = $paypal->getAccessToken();
-        $this->assertEquals($accessToken, $getAccessToken, true);
+        $this->assertNotNull($getAccessToken);
+    }
+
+    public function can_create_paypal_order()
+    {
+
+        $paypal = new PaypalHelper();
+        $accessToken = $paypal->getAccessToken();
+        $response = Http::withToken($accessToken)->acceptJson()->post($url, [
+            "intent" => "CAPTURE",
+            "purchase_units" => [
+                [
+                    "reference_id" => "d9f80740-38f0-11e8-b467-0ed5f89f718b",
+                    "amount" => [
+                        "currency_code" => "EUR",
+                        "value" => "0.01"
+                    ]
+                ]
+            ],
+            "application_context" => [
+                "shipping_preference" => "NO_SHIPPING",
+            ],
+        ])->json();
+        $response->assertOk();
+        return $response;
     }
 
 
     public function can_get_order_details_by_order_id()
     {
-        $orderId = 'order_id';
+        $order = $this->can_create_paypal_order();
 
         $paypal = new  PaypalHelper();;
-        $order = $paypal->getOrderDetails($orderId);
+        $orderId = $paypal->getOrderDetails($order['id']);
 
-        $this->assertEquals($orderId, $order->id, true);
-        return $order;
+        $this->assertEquals($orderId, $order['id'], true);
     }
 
     public function can_refund_order_by_capture_id()
     {
         $captureId = 'captureId';
         $currencyCode = "EUR";
-        $$amount = "EUR";
+        $amount = "0.01";
 
         $paypal = new  PaypalHelper();
-        $refund = $paypal->refund($captureId, $amount, $currencyCode);
+        $response = $paypal->refund($captureId, $amount, $currencyCode);
 
-        $this->assertEquals($orderId, $order->id, true);
-        return $refund;
+        $response->assertOk();
+        $response->assertSuccessful();
     }
 }
