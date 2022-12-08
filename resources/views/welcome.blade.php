@@ -19,7 +19,7 @@
 
 
     <script
-        src="https://www.paypal.com/sdk/js?client-id=Aes56nAKYQiNZSLJVCBL_mow2U1RIGfRINJuoRpkx5oZPAi7qCu3EHzYgJV_EyjKS_pyq0qiLhYshhMv&components=buttons&disable-funding=card,sofort&currency=EUR">
+        src="https://www.paypal.com/sdk/js?client-id=your_client_id&components=buttons&disable-funding=card,sofort&currency=EUR">
     </script>
     <script src="{{asset('/js/paypal.js')}}" defer>
 
